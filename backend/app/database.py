@@ -29,7 +29,9 @@ class BookCache(Base):
     goodreads_ratings_count = Column(Integer)
     genres = Column(JSON)
     plot_summary = Column(Text)
+    reviews_summary = Column(Text)
     source_urls = Column(JSON)
+    goodreads_id = Column(String)
     cached_at = Column(DateTime, default=datetime.utcnow)
 
 

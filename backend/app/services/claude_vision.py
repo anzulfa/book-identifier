@@ -2,9 +2,9 @@ import json
 import re
 import anthropic
 
-_MODEL = "claude-sonnet-4-6"
+_MODEL = "claude-haiku-4-5-20251001"
 _PROMPT = (
-    'Look at this image and extract the book title and author if visible. '
+    'Extract book title and author from this image. '
     'Return JSON only: {"title": "...", "author": "..."}'
 )
 
