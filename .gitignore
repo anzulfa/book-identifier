@@ -1,0 +1,33 @@
+# Environment / secrets
+backend/.env
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Docker volumes (local bind-mounts)
+pgdata/
+redisdata/
+
+# Test / scratch files
+resources/
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
