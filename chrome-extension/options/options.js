@@ -1,5 +1,3 @@
-const DEFAULT_BACKEND_URL = 'http://localhost:8000';
-
 function showStatus(el, message, isError = false) {
   el.textContent = message;
   el.classList.toggle('error', isError);

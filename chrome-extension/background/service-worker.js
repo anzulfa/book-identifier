@@ -1,4 +1,4 @@
-const DEFAULT_BACKEND_URL = 'http://localhost:8000';
+importScripts('../config.js');
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
