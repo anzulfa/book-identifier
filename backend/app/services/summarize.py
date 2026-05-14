@@ -37,8 +37,8 @@ async def summarize_book_content(description: str, reviews: list) -> tuple[str, 
     prompt = f"""{sections}
 
 Respond with a JSON object containing exactly two keys:
-- "plot_summary": 4-5 sentences summarising the plot or main content from the description. If no description is provided, use an empty string.
-- "reviews_summary": 4-5 sentences capturing the overall reader sentiment and highlights from the reviews. If no reviews are provided, use an empty string.
+- "plot_summary": 3-4 sentences summarising the plot or main content from the description. If no description is provided, use an empty string.
+- "reviews_summary": 3-4 sentences summarising what readers overall think — their general sentiment, what they praise or criticise, and what kind of reader it appeals to. Write in third person (e.g. "Readers praise...", "Many find..."). Do NOT quote or paraphrase any single review. If no reviews are provided, use an empty string.
 
 Return only the raw JSON, no markdown fences."""
 
