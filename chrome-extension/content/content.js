@@ -15,6 +15,8 @@ if (!window.__biInjected) {
     if (message.type === 'SHOW_RESULT')       showResultPanel(message.payload);
     if (message.type === 'SHOW_ERROR')        showErrorPanel(message.payload.message);
     if (message.type === 'SHOW_RATE_LIMIT')   showRateLimitPanel();
+    if (message.type === 'LOGIN_SUCCESS')     handleLoginSuccess(message.payload);
+    if (message.type === 'LOGIN_ERROR')       handleLoginError(message.payload);
   });
 
   // ── Drag-Select Overlay ──────────────────────────────────────────────────────
@@ -277,6 +279,7 @@ if (!window.__biInjected) {
     panel.appendChild(body);
 
     panel.querySelector('.bi-new-search')?.addEventListener('click', activateRegionSelector);
+    appendLoginSection(panel);
     attachClickOutside();
   }
 
@@ -307,9 +310,114 @@ if (!window.__biInjected) {
       <div class="bi-state-icon">🚫</div>
       <p class="bi-state-message">You've reached the free tier limit of 10 lookups today.</p>
       <p class="bi-state-hint">Your limit resets automatically at midnight UTC.</p>
-      <button class="bi-btn bi-btn-upgrade">Upgrade for unlimited access</button>
     `;
     panel.appendChild(body);
+    appendLoginSection(panel);
     attachClickOutside();
+  }
+
+  // ── Inline Login Section ──────────────────────────────────────────────────
+
+  function appendLoginSection(panel) {
+    chrome.storage.sync.get(['authToken', 'isPremium'], result => {
+      if (result.authToken && result.isPremium) return;
+
+      const footer = document.createElement('div');
+      footer.id = 'bi-login-footer';
+
+      if (result.authToken && !result.isPremium) {
+        footer.className = 'bi-login-footer bi-login-collapsed';
+        footer.innerHTML = `<button class="bi-signin-toggle" id="bi-upgrade-toggle">Upgrade plan</button>`;
+        panel.appendChild(footer);
+        footer.querySelector('#bi-upgrade-toggle').addEventListener('click', () => showUpgradeCard(footer));
+      } else {
+        footer.className = 'bi-login-footer bi-login-collapsed';
+        footer.innerHTML = `<button class="bi-signin-toggle" id="bi-signin-toggle">Sign In / Sign Up</button>`;
+        panel.appendChild(footer);
+        footer.querySelector('#bi-signin-toggle').addEventListener('click', () => showLoginForm(footer));
+      }
+    });
+  }
+
+  function showLoginForm(footer) {
+    footer.classList.remove('bi-login-collapsed');
+    footer.innerHTML = `
+      <div class="bi-login-label">Log in to sync your usage across devices</div>
+      <button class="bi-google-btn" id="bi-google-btn">
+        <svg width="16" height="16" viewBox="0 0 18 18" style="flex-shrink:0">
+          <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+          <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+          <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/>
+        </svg>
+        Continue with Google
+      </button>
+      <div class="bi-or-row"><span>or</span></div>
+      <input class="bi-field" type="email" id="bi-login-email" placeholder="Email">
+      <input class="bi-field" type="password" id="bi-login-password" placeholder="Password">
+      <button class="bi-btn bi-login-submit" id="bi-login-submit">Log in</button>
+      <div class="bi-login-status" id="bi-login-status"></div>
+    `;
+
+    footer.querySelector('#bi-google-btn').addEventListener('click', () => {
+      footer.querySelector('#bi-google-btn').disabled = true;
+      footer.querySelector('#bi-login-status').textContent = '';
+      chrome.runtime.sendMessage({ type: 'DO_GOOGLE_LOGIN' });
+    });
+
+    footer.querySelector('#bi-login-submit').addEventListener('click', () => {
+      const email = footer.querySelector('#bi-login-email').value.trim();
+      const password = footer.querySelector('#bi-login-password').value;
+      if (!email || !password) {
+        footer.querySelector('#bi-login-status').textContent = 'Enter email and password.';
+        return;
+      }
+      footer.querySelector('#bi-login-submit').disabled = true;
+      footer.querySelector('#bi-login-status').textContent = '';
+      chrome.runtime.sendMessage({ type: 'DO_EMAIL_LOGIN', payload: { email, password } });
+    });
+  }
+
+  function showUpgradeCard(footer) {
+    footer.classList.remove('bi-login-collapsed');
+    footer.innerHTML = `
+      <div class="bi-upgrade-card">
+        <div class="bi-upgrade-title">✨ Book Identifier Premium</div>
+        <ul class="bi-upgrade-benefits">
+          <li>Unlimited daily lookups</li>
+          <li>Usage synced across all your devices</li>
+          <li>Priority support</li>
+        </ul>
+        <button class="bi-btn bi-upgrade-cta" id="bi-upgrade-cta">Upgrade to Premium</button>
+        <div class="bi-login-status" id="bi-upgrade-status"></div>
+      </div>
+    `;
+    footer.querySelector('#bi-upgrade-cta').addEventListener('click', () => {
+      footer.querySelector('#bi-upgrade-status').textContent = 'Coming soon — payment not yet available.';
+    });
+  }
+
+  function handleLoginSuccess(payload) {
+    const footer = document.getElementById('bi-login-footer');
+    if (!footer) return;
+    if (payload.isPremium) {
+      footer.innerHTML = `<div class="bi-login-success">✓ Signed in as ${escapeHtml(payload.email)}</div>`;
+    } else {
+      footer.className = 'bi-login-footer bi-login-collapsed';
+      footer.innerHTML = `
+        <div class="bi-login-success" style="margin-bottom:6px">✓ Signed in as ${escapeHtml(payload.email)}</div>
+        <button class="bi-signin-toggle" id="bi-upgrade-toggle">Upgrade plan</button>
+      `;
+      footer.querySelector('#bi-upgrade-toggle').addEventListener('click', () => showUpgradeCard(footer));
+    }
+  }
+
+  function handleLoginError(payload) {
+    const status = document.getElementById('bi-login-status');
+    if (status) status.textContent = payload.message || 'Login failed.';
+    const btn = document.getElementById('bi-login-submit');
+    const googleBtn = document.getElementById('bi-google-btn');
+    if (btn) btn.disabled = false;
+    if (googleBtn) googleBtn.disabled = false;
   }
 }

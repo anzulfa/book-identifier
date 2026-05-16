@@ -312,6 +312,156 @@ details[open] .bi-plot-arrow {
   background: rgba(251, 191, 36, 0.25);
 }
 
+/* ── Inline Login Section ── */
+
+.bi-login-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bi-login-collapsed {
+  padding: 10px 14px;
+  align-items: flex-end;
+}
+
+.bi-signin-toggle {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 7px;
+  color: #9090b8;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.bi-signin-toggle:hover {
+  border-color: rgba(0, 212, 255, 0.4);
+  color: #00d4ff;
+}
+
+.bi-login-label {
+  font-size: 11px;
+  color: #7070a0;
+  text-align: center;
+  margin-bottom: 2px;
+}
+
+.bi-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: #fff;
+  color: #1f1f1f;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.bi-google-btn:hover { background: #f0f0f0; }
+.bi-google-btn:disabled { opacity: 0.5; cursor: default; }
+
+.bi-or-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #555580;
+  font-size: 11px;
+}
+
+.bi-or-row::before,
+.bi-or-row::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bi-field {
+  width: 100%;
+  background: #1a1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #e0e0f0;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+
+.bi-field:focus { border-color: rgba(0, 212, 255, 0.5); }
+
+.bi-login-status {
+  font-size: 11px;
+  color: #f87171;
+  min-height: 14px;
+  text-align: center;
+}
+
+.bi-login-success {
+  font-size: 12px;
+  color: #4ade80;
+  text-align: center;
+  padding: 8px 0 4px;
+}
+
+/* ── Upgrade Card ── */
+
+.bi-upgrade-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bi-upgrade-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f0f0fa;
+  text-align: center;
+}
+
+.bi-upgrade-benefits {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.bi-upgrade-benefits li {
+  font-size: 12px;
+  color: #c0c0d8;
+  padding-left: 16px;
+  position: relative;
+}
+
+.bi-upgrade-benefits li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.bi-upgrade-cta {
+  width: 100%;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(100, 80, 255, 0.15));
+  border-color: rgba(0, 212, 255, 0.4);
+}
+
 /* ── Skeleton Loading ── */
 
 .bi-skeleton-body {

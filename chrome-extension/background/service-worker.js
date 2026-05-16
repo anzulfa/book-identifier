@@ -53,12 +53,24 @@ async function blobToBase64(blob) {
   return 'data:image/png;base64,' + btoa(binary);
 }
 
+async function getAuthHeaders() {
+  return new Promise(resolve => {
+    chrome.storage.sync.get(['authToken'], result => {
+      if (result.authToken) {
+        resolve({ 'Authorization': `Bearer ${result.authToken}` });
+      } else {
+        getOrCreateDeviceId().then(id => resolve({ 'X-Device-ID': id }));
+      }
+    });
+  });
+}
+
 async function handleRegionSelected(region, tabId) {
   chrome.tabs.sendMessage(tabId, { type: 'SHOW_LOADING' });
 
   try {
-    const [deviceId, backendUrl] = await Promise.all([
-      getOrCreateDeviceId(),
+    const [authHeaders, backendUrl] = await Promise.all([
+      getAuthHeaders(),
       getBackendUrl(),
     ]);
 
@@ -70,7 +82,7 @@ async function handleRegionSelected(region, tabId) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Device-ID': deviceId,
+        ...authHeaders,
       },
       body: JSON.stringify({ image_base64: imageBase64 }),
     });
@@ -100,8 +112,86 @@ chrome.action.onClicked.addListener(async tab => {
   chrome.tabs.sendMessage(tabId, { type: 'ACTIVATE_SELECTOR' });
 });
 
+async function handleGoogleLogin(tabId) {
+  try {
+    const redirectUri = `https://${chrome.runtime.id}.chromiumapp.org/`;
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: 'token',
+      scope: 'openid email profile',
+    });
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+
+    const responseUrl = await new Promise((resolve, reject) => {
+      chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, url => {
+        if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+        resolve(url);
+      });
+    });
+
+    const fragment = new URL(responseUrl).hash.substring(1);
+    const accessToken = new URLSearchParams(fragment).get('access_token');
+    if (!accessToken) throw new Error('No access token received');
+
+    const backendUrl = await getBackendUrl();
+    const resp = await fetch(`${backendUrl}/api/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ access_token: accessToken }),
+    });
+    if (!resp.ok) throw new Error((await resp.json()).detail || 'Google login failed');
+
+    const data = await resp.json();
+    await new Promise(resolve => chrome.storage.sync.set({
+      authToken: data.access_token,
+      userName: data.name || '',
+      userEmail: data.email || '',
+      userPicture: data.picture || '',
+      isPremium: data.is_premium || false,
+      usageCount: 0,
+    }, resolve));
+
+    chrome.tabs.sendMessage(tabId, { type: 'LOGIN_SUCCESS', payload: { email: data.email, name: data.name, isPremium: data.is_premium || false } });
+  } catch (err) {
+    chrome.tabs.sendMessage(tabId, { type: 'LOGIN_ERROR', payload: { message: err.message } });
+  }
+}
+
+async function handleEmailLogin(email, password, tabId) {
+  try {
+    const backendUrl = await getBackendUrl();
+    const resp = await fetch(`${backendUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!resp.ok) throw new Error((await resp.json()).detail || 'Login failed');
+
+    const data = await resp.json();
+    await new Promise(resolve => chrome.storage.sync.set({
+      authToken: data.access_token,
+      userName: data.name || '',
+      userEmail: data.email || '',
+      userPicture: '',
+      isPremium: data.is_premium || false,
+      usageCount: 0,
+    }, resolve));
+
+    chrome.tabs.sendMessage(tabId, { type: 'LOGIN_SUCCESS', payload: { email: data.email, name: data.name, isPremium: data.is_premium || false } });
+  } catch (err) {
+    chrome.tabs.sendMessage(tabId, { type: 'LOGIN_ERROR', payload: { message: err.message } });
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message.type === 'REGION_SELECTED' && sender.tab?.id) {
     handleRegionSelected(message.payload, sender.tab.id);
+  }
+  if (message.type === 'DO_GOOGLE_LOGIN' && sender.tab?.id) {
+    handleGoogleLogin(sender.tab.id);
+  }
+  if (message.type === 'DO_EMAIL_LOGIN' && sender.tab?.id) {
+    handleEmailLogin(message.payload.email, message.payload.password, sender.tab.id);
   }
 });

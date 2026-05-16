@@ -3,7 +3,7 @@
   "name": "Book Identifier",
   "version": "1.0.0",
   "description": "Drag-select any book cover or title on screen to identify it.",
-  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "permissions": ["activeTab", "scripting", "storage", "tabs", "identity"],
   "host_permissions": ["https://book-identifier-production.up.railway.app", "http://localhost:8000"],
   "background": {
     "service_worker": "background/service-worker.js"

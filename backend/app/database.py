@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
-from sqlalchemy import Column, String, Integer, Float, DateTime, Text, JSON
+from sqlalchemy import Boolean, Column, String, Integer, Float, DateTime, Text, JSON, text
 from datetime import datetime, timezone
 import os
 
@@ -39,6 +39,19 @@ class BookCache(Base):
     cached_at = Column(DateTime, default=datetime.utcnow)
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id              = Column(Integer, primary_key=True, autoincrement=True)
+    email           = Column(String, unique=True, index=True, nullable=False)
+    name            = Column(String, nullable=True)
+    hashed_password = Column(String, nullable=True)
+    google_id       = Column(String, unique=True, index=True, nullable=True)
+    picture_url     = Column(String, nullable=True)
+    is_premium      = Column(Boolean, default=False, nullable=False)
+    created_at      = Column(DateTime, default=datetime.utcnow)
+
+
 class UsageRecord(Base):
     __tablename__ = "usage_records"
 
@@ -51,6 +64,9 @@ class UsageRecord(Base):
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_premium BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
 
 
 async def get_db():

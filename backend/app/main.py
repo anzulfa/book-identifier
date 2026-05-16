@@ -3,13 +3,21 @@ from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
-from app.auth import TokenRequest, create_access_token, get_current_identity
-from app.database import init_db
+from app.auth import (
+    TokenRequest,
+    authenticate_email_user,
+    create_access_token,
+    create_email_user,
+    get_current_identity,
+    get_or_create_google_user,
+)
+from app.database import AsyncSessionLocal, init_db
 from app.rate_limit import check_and_increment
 from app.services.book_pipeline import get_book_data
 from app.services.claude_vision import extract_title_from_image
+from app.services.google_oauth import get_google_user_info
 
 
 @asynccontextmanager
@@ -42,6 +50,16 @@ class LookupRequest(BaseModel):
     author: Optional[str] = None
 
 
+class EmailAuthRequest(BaseModel):
+    email: EmailStr
+    password: str
+    name: Optional[str] = None
+
+
+class GoogleAuthRequest(BaseModel):
+    access_token: str
+
+
 # ---------- Routes ----------
 
 
@@ -52,20 +70,54 @@ async def health():
 
 @app.post("/api/auth/token")
 async def create_token(body: TokenRequest):
-    """
-    Issues a JWT. Replace the stub credential check with a real user store
-    before deploying to production.
-    """
     import os
-
     admin_user = os.getenv("ADMIN_USERNAME", "admin")
     admin_pass = os.getenv("ADMIN_PASSWORD", "changeme")
-
     if body.username != admin_user or body.password != admin_pass:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    token = create_access_token(sub=body.username, is_free_tier=False)
+    token = create_access_token(sub=body.username, is_premium=True)
     return {"access_token": token, "token_type": "bearer"}
+
+
+@app.post("/api/auth/register")
+async def register(body: EmailAuthRequest):
+    async with AsyncSessionLocal() as session:
+        user = await create_email_user(session, body.email, body.password, body.name)
+        token = create_access_token(sub=user.email, user_id=user.id, is_premium=user.is_premium, name=user.name)
+        return {"access_token": token, "token_type": "bearer", "email": user.email, "name": user.name, "is_premium": user.is_premium}
+
+
+@app.post("/api/auth/login")
+async def login(body: EmailAuthRequest):
+    async with AsyncSessionLocal() as session:
+        user = await authenticate_email_user(session, body.email, body.password)
+        token = create_access_token(sub=user.email, user_id=user.id, is_premium=user.is_premium, name=user.name)
+        return {"access_token": token, "token_type": "bearer", "email": user.email, "name": user.name, "is_premium": user.is_premium}
+
+
+@app.post("/api/auth/google")
+async def google_auth(body: GoogleAuthRequest):
+    try:
+        info = await get_google_user_info(body.access_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid Google access token.")
+    async with AsyncSessionLocal() as session:
+        user = await get_or_create_google_user(
+            session,
+            google_id=info["sub"],
+            email=info["email"],
+            name=info.get("name"),
+            picture=info.get("picture"),
+        )
+        token = create_access_token(sub=user.email, user_id=user.id, is_premium=user.is_premium, name=user.name)
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "email": user.email,
+            "name": user.name,
+            "picture": user.picture_url,
+            "is_premium": user.is_premium,
+        }
 
 
 @app.post("/api/extract-title")
