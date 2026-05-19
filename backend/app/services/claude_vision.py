@@ -1,6 +1,8 @@
+import asyncio
 import json
 import re
 import anthropic
+from anthropic import APIStatusError
 
 _MODEL = "claude-haiku-4-5-20251001"
 _PROMPT = (
@@ -35,23 +37,33 @@ def _parse_media_type(image_base64: str) -> tuple[str, str]:
 
 async def extract_title_from_image(image_base64: str) -> dict:
     media_type, raw_b64 = _parse_media_type(image_base64)
+    request = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {"type": "base64", "media_type": media_type, "data": raw_b64},
+                },
+                {"type": "text", "text": _PROMPT},
+            ],
+        }
+    ]
 
-    message = await _get_client().messages.create(
-        model=_MODEL,
-        max_tokens=256,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {"type": "base64", "media_type": media_type, "data": raw_b64},
-                    },
-                    {"type": "text", "text": _PROMPT},
-                ],
-            }
-        ],
-    )
+    delays = [2, 5]
+    for attempt, delay in enumerate(delays + [None]):
+        try:
+            message = await _get_client().messages.create(
+                model=_MODEL, max_tokens=256, messages=request
+            )
+            break
+        except APIStatusError as exc:
+            if exc.status_code == 529 and delay is not None:
+                await asyncio.sleep(delay)
+                continue
+            if exc.status_code == 529:
+                raise RuntimeError("Claude is temporarily overloaded. Please try again in a moment.")
+            raise
 
     text = message.content[0].text.strip()
     text = re.sub(r"^```(?:json)?\s*", "", text)
