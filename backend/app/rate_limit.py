@@ -4,7 +4,7 @@ from fastapi import HTTPException
 import redis.asyncio as aioredis
 
 REDIS_URL = os.environ["REDIS_URL"]
-FREE_TIER_DAILY_LIMIT = 2
+FREE_TIER_DAILY_LIMIT = 100
 
 _redis: aioredis.Redis | None = None
 
