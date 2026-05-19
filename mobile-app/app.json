@@ -14,13 +14,15 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.palfa.bookidentifier"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.palfa.bookidentifier",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -35,6 +37,15 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "googleWebClientId": "998910272906-v3etbja60qds1afvuss0vtej457tg53a.apps.googleusercontent.com",
+      "googleIosClientId": "998910272906-br82oo0kidpnhglj3gcpcnji8cvq6nsv.apps.googleusercontent.com",
+      "googleAndroidClientId": "998910272906-683f90d12ld1ro6hmqdhivsrts2rcttq.apps.googleusercontent.com",
+      "router": {},
+      "eas": {
+        "projectId": "3055cfc8-7c0f-4c5b-b3dc-a8c33c0d2fa4"
+      }
     }
   }
 }

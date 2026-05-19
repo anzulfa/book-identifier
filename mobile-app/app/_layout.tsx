@@ -32,6 +32,14 @@ export default function RootLayout() {
               animation: 'slide_from_bottom',
             }}
           />
+          <Stack.Screen
+            name="sign-in"
+            options={{
+              headerShown: false,
+              presentation: 'card',
+              animation: 'slide_from_bottom',
+            }}
+          />
         </Stack>
       </SafeAreaProvider>
     </QueryClientProvider>

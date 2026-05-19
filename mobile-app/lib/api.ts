@@ -1,4 +1,4 @@
-import { getOrCreateDeviceId, getBackendUrl } from './storage';
+import { getOrCreateDeviceId, getBackendUrl, getAuthToken } from './storage';
 
 export interface BookResult {
   title: string;
@@ -23,18 +23,54 @@ export class RateLimitError extends Error {
   }
 }
 
+export interface AuthResponse {
+  access_token: string;
+  email: string;
+  name?: string | null;
+  is_premium: boolean;
+}
+
+async function authRequest(path: string, body: object): Promise<AuthResponse> {
+  const backendUrl = await getBackendUrl();
+  const resp = await fetch(`${backendUrl}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.detail ?? `Server error ${resp.status}`);
+  return data;
+}
+
+export function authLogin(email: string, password: string): Promise<AuthResponse> {
+  return authRequest('/api/auth/login', { email, password });
+}
+
+export function authRegister(email: string, password: string, name?: string): Promise<AuthResponse> {
+  return authRequest('/api/auth/register', { email, password, name });
+}
+
+export function authGoogle(accessToken: string): Promise<AuthResponse> {
+  return authRequest('/api/auth/google', { access_token: accessToken });
+}
+
 export async function lookupBook(imageBase64: string): Promise<BookResult> {
-  const [deviceId, backendUrl] = await Promise.all([
+  const [deviceId, backendUrl, token] = await Promise.all([
     getOrCreateDeviceId(),
     getBackendUrl(),
+    getAuthToken(),
   ]);
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else {
+    headers['X-Device-ID'] = deviceId;
+  }
 
   const resp = await fetch(`${backendUrl}/api/lookup`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Device-ID': deviceId,
-    },
+    headers,
     body: JSON.stringify({ image_base64: imageBase64 }),
   });
 

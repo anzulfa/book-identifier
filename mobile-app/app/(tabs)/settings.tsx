@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { getBackendUrl, setBackendUrl } from '@/lib/storage';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { getBackendUrl, setBackendUrl, getAuthToken, clearAuthToken } from '@/lib/storage';
 import Constants from 'expo-constants';
 import { Colors } from '@/constants/Colors';
 
@@ -30,12 +31,25 @@ function Row({ label, value, last }: { label: string; value?: string; last?: boo
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const [backendUrl, setUrl] = useState('');
   const [saving, setSaving] = useState(false);
+  const [authToken, setAuthTokenState] = useState<string | null>(null);
 
   useEffect(() => {
     getBackendUrl().then(setUrl);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      getAuthToken().then(setAuthTokenState);
+    }, [])
+  );
+
+  async function signOut() {
+    await clearAuthToken();
+    setAuthTokenState(null);
+  }
 
   async function save() {
     if (!backendUrl.startsWith('http')) {
@@ -57,6 +71,29 @@ export default function SettingsScreen() {
       className="flex-1 bg-stone"
     >
       <ScrollView className="flex-1 px-4 pt-6" keyboardShouldPersistTaps="handled">
+        <Section title="Account">
+          {authToken ? (
+            <TouchableOpacity
+              onPress={() => Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Sign Out', style: 'destructive', onPress: signOut },
+              ])}
+              className="px-4 py-3.5 items-center"
+              activeOpacity={0.7}
+            >
+              <Text className="text-gold font-semibold text-sm">Sign Out</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => router.push('/sign-in')}
+              className="px-4 py-3.5 items-center"
+              activeOpacity={0.7}
+            >
+              <Text className="text-gold font-semibold text-sm">Sign In / Create Account</Text>
+            </TouchableOpacity>
+          )}
+        </Section>
+
         <Section title="App">
           <View className="px-4 py-3 border-b border-border">
             <Text className="text-cream text-sm mb-1.5">Backend URL</Text>
