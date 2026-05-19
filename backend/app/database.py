@@ -49,6 +49,7 @@ class User(Base):
     google_id       = Column(String, unique=True, index=True, nullable=True)
     picture_url     = Column(String, nullable=True)
     is_premium      = Column(Boolean, default=False, nullable=False)
+    is_free_tier    = Column(Boolean, default=True, nullable=False)
     created_at      = Column(DateTime, default=datetime.utcnow)
 
 
@@ -81,6 +82,9 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
         await conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_premium BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_free_tier BOOLEAN NOT NULL DEFAULT TRUE"
         ))
 
 
