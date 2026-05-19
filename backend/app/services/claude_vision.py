@@ -16,7 +16,7 @@ _client: anthropic.AsyncAnthropic | None = None
 def _get_client() -> anthropic.AsyncAnthropic:
     global _client
     if _client is None:
-        _client = anthropic.AsyncAnthropic()
+        _client = anthropic.AsyncAnthropic(timeout=15.0)
     return _client
 
 
@@ -50,8 +50,7 @@ async def extract_title_from_image(image_base64: str) -> dict:
         }
     ]
 
-    delays = [2, 5]
-    for attempt, delay in enumerate(delays + [None]):
+    for delay in [2, None]:
         try:
             message = await _get_client().messages.create(
                 model=_MODEL, max_tokens=256, messages=request
