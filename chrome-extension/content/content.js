@@ -297,6 +297,7 @@ if (!window.__biInjected) {
     `;
     panel.appendChild(body);
     body.querySelector('.bi-retry').addEventListener('click', activateRegionSelector);
+    appendLoginSection(panel);
     attachClickOutside();
   }
 
@@ -318,45 +319,70 @@ if (!window.__biInjected) {
 
   // ── Inline Login Section ──────────────────────────────────────────────────
 
-  function appendLoginSection(panel) {
-    chrome.storage.sync.get(['authToken', 'isPremium'], result => {
-      if (result.authToken && result.isPremium) return;
+  function showSignedInFooter(footer, email, isPremium) {
+    footer.className = 'bi-login-footer';
+    footer.innerHTML = `
+      <div class="bi-signed-in-row">
+        <span class="bi-login-success">✓ Signed in as ${escapeHtml(email)}</span>
+        <button class="bi-signout-btn" id="bi-signout-btn">Sign Out</button>
+      </div>
+      ${!isPremium ? `<button class="bi-signin-toggle" id="bi-upgrade-toggle">Upgrade plan</button>` : ''}
+    `;
+    footer.querySelector('#bi-signout-btn').addEventListener('click', () => handleSignOut(footer));
+    if (!isPremium) {
+      footer.querySelector('#bi-upgrade-toggle')?.addEventListener('click', () => showUpgradeCard(footer));
+    }
+  }
 
+  function appendLoginSection(panel) {
+    chrome.storage.sync.get(['authToken', 'isPremium', 'userEmail'], result => {
       const footer = document.createElement('div');
       footer.id = 'bi-login-footer';
+      panel.appendChild(footer);
 
-      if (result.authToken && !result.isPremium) {
-        footer.className = 'bi-login-footer bi-login-collapsed';
-        footer.innerHTML = `<button class="bi-signin-toggle" id="bi-upgrade-toggle">Upgrade plan</button>`;
-        panel.appendChild(footer);
-        footer.querySelector('#bi-upgrade-toggle').addEventListener('click', () => showUpgradeCard(footer));
+      if (result.authToken) {
+        showSignedInFooter(footer, result.userEmail || '', result.isPremium || false);
       } else {
         footer.className = 'bi-login-footer bi-login-collapsed';
         footer.innerHTML = `<button class="bi-signin-toggle" id="bi-signin-toggle">Sign In / Sign Up</button>`;
-        panel.appendChild(footer);
         footer.querySelector('#bi-signin-toggle').addEventListener('click', () => showLoginForm(footer));
       }
     });
   }
 
-  function showLoginForm(footer) {
+  function handleSignOut(footer) {
+    chrome.storage.sync.remove(['authToken', 'userName', 'userEmail', 'userPicture', 'isPremium', 'usageCount'], () => {
+      footer.className = 'bi-login-footer bi-login-collapsed';
+      footer.innerHTML = `<button class="bi-signin-toggle" id="bi-signin-toggle">Sign In / Sign Up</button>`;
+      footer.querySelector('#bi-signin-toggle').addEventListener('click', () => showLoginForm(footer));
+    });
+  }
+
+  const GOOGLE_SVG = `<svg width="16" height="16" viewBox="0 0 18 18" style="flex-shrink:0">
+    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+    <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/>
+  </svg>`;
+
+  function showLoginForm(footer) { showAuthForm(footer, 'login'); }
+
+  function showAuthForm(footer, mode) {
+    const isRegister = mode === 'register';
     footer.classList.remove('bi-login-collapsed');
     footer.innerHTML = `
-      <div class="bi-login-label">Log in to sync your usage across devices</div>
+      <div class="bi-login-label">${isRegister ? 'Create a free account' : 'Sign in to sync your usage across devices'}</div>
       <button class="bi-google-btn" id="bi-google-btn">
-        <svg width="16" height="16" viewBox="0 0 18 18" style="flex-shrink:0">
-          <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
-          <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
-          <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
-          <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/>
-        </svg>
+        ${GOOGLE_SVG}
         Continue with Google
       </button>
       <div class="bi-or-row"><span>or</span></div>
+      ${isRegister ? `<input class="bi-field" type="text" id="bi-login-name" placeholder="Name (optional)">` : ''}
       <input class="bi-field" type="email" id="bi-login-email" placeholder="Email">
-      <input class="bi-field" type="password" id="bi-login-password" placeholder="Password">
-      <button class="bi-btn bi-login-submit" id="bi-login-submit">Log in</button>
+      <input class="bi-field" type="password" id="bi-login-password" placeholder="${isRegister ? 'Password (min. 8 characters)' : 'Password'}">
+      <button class="bi-btn bi-login-submit" id="bi-login-submit">${isRegister ? 'Create Account' : 'Log in'}</button>
       <div class="bi-login-status" id="bi-login-status"></div>
+      <button class="bi-auth-toggle" id="bi-auth-toggle">${isRegister ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}</button>
     `;
 
     footer.querySelector('#bi-google-btn').addEventListener('click', () => {
@@ -372,9 +398,26 @@ if (!window.__biInjected) {
         footer.querySelector('#bi-login-status').textContent = 'Enter email and password.';
         return;
       }
+      if (isRegister && password.length < 8) {
+        footer.querySelector('#bi-login-status').textContent = 'Password must be at least 8 characters.';
+        return;
+      }
+      if (isRegister && new TextEncoder().encode(password).length > 72) {
+        footer.querySelector('#bi-login-status').textContent = 'Password must be 72 characters or fewer.';
+        return;
+      }
       footer.querySelector('#bi-login-submit').disabled = true;
       footer.querySelector('#bi-login-status').textContent = '';
-      chrome.runtime.sendMessage({ type: 'DO_EMAIL_LOGIN', payload: { email, password } });
+      if (isRegister) {
+        const name = footer.querySelector('#bi-login-name')?.value.trim() || '';
+        chrome.runtime.sendMessage({ type: 'DO_EMAIL_REGISTER', payload: { email, password, name } });
+      } else {
+        chrome.runtime.sendMessage({ type: 'DO_EMAIL_LOGIN', payload: { email, password } });
+      }
+    });
+
+    footer.querySelector('#bi-auth-toggle').addEventListener('click', () => {
+      showAuthForm(footer, isRegister ? 'login' : 'register');
     });
   }
 
@@ -400,16 +443,7 @@ if (!window.__biInjected) {
   function handleLoginSuccess(payload) {
     const footer = document.getElementById('bi-login-footer');
     if (!footer) return;
-    if (payload.isPremium) {
-      footer.innerHTML = `<div class="bi-login-success">✓ Signed in as ${escapeHtml(payload.email)}</div>`;
-    } else {
-      footer.className = 'bi-login-footer bi-login-collapsed';
-      footer.innerHTML = `
-        <div class="bi-login-success" style="margin-bottom:6px">✓ Signed in as ${escapeHtml(payload.email)}</div>
-        <button class="bi-signin-toggle" id="bi-upgrade-toggle">Upgrade plan</button>
-      `;
-      footer.querySelector('#bi-upgrade-toggle').addEventListener('click', () => showUpgradeCard(footer));
-    }
+    showSignedInFooter(footer, payload.email || '', payload.isPremium || false);
   }
 
   function handleLoginError(payload) {

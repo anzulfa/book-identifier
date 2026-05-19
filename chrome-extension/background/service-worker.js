@@ -99,9 +99,27 @@ async function handleRegionSelected(region, tabId) {
 
     const data = await resp.json();
     chrome.tabs.sendMessage(tabId, { type: 'SHOW_RESULT', payload: data });
+    saveToHistory(data, backendUrl, authHeaders).catch(() => {});
   } catch (err) {
     chrome.tabs.sendMessage(tabId, { type: 'SHOW_ERROR', payload: { message: err.message } });
   }
+}
+
+async function saveToHistory(data, backendUrl, authHeaders) {
+  if (!authHeaders['Authorization']) return; // only for signed-in users
+  await fetch(`${backendUrl}/api/history`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
+    body: JSON.stringify({
+      title: data.title,
+      author: data.author ?? null,
+      year: data.year ?? null,
+      cover_image_url: data.cover_image_url ?? null,
+      goodreads_rating: data.goodreads_rating ?? null,
+      google_rating: data.google_rating ?? null,
+      genres: data.genres ?? null,
+    }),
+  });
 }
 
 chrome.action.onClicked.addListener(async tab => {
@@ -184,6 +202,32 @@ async function handleEmailLogin(email, password, tabId) {
   }
 }
 
+async function handleEmailRegister(email, password, name, tabId) {
+  try {
+    const backendUrl = await getBackendUrl();
+    const resp = await fetch(`${backendUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name: name || undefined }),
+    });
+    if (!resp.ok) throw new Error((await resp.json()).detail || 'Registration failed');
+
+    const data = await resp.json();
+    await new Promise(resolve => chrome.storage.sync.set({
+      authToken: data.access_token,
+      userName: data.name || '',
+      userEmail: data.email || '',
+      userPicture: '',
+      isPremium: data.is_premium || false,
+      usageCount: 0,
+    }, resolve));
+
+    chrome.tabs.sendMessage(tabId, { type: 'LOGIN_SUCCESS', payload: { email: data.email, name: data.name, isPremium: data.is_premium || false } });
+  } catch (err) {
+    chrome.tabs.sendMessage(tabId, { type: 'LOGIN_ERROR', payload: { message: err.message } });
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message.type === 'REGION_SELECTED' && sender.tab?.id) {
     handleRegionSelected(message.payload, sender.tab.id);
@@ -193,5 +237,8 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   }
   if (message.type === 'DO_EMAIL_LOGIN' && sender.tab?.id) {
     handleEmailLogin(message.payload.email, message.payload.password, sender.tab.id);
+  }
+  if (message.type === 'DO_EMAIL_REGISTER' && sender.tab?.id) {
+    handleEmailRegister(message.payload.email, message.payload.password, message.payload.name, sender.tab.id);
   }
 });

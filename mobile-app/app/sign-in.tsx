@@ -58,6 +58,10 @@ export default function SignInScreen() {
       Alert.alert('Missing fields', 'Please enter your email and password.');
       return;
     }
+    if (mode === 'register' && password.length < 8) {
+      Alert.alert('Weak password', 'Password must be at least 8 characters.');
+      return;
+    }
     setLoading(true);
     try {
       const result = mode === 'login'
@@ -153,9 +157,10 @@ export default function SignInScreen() {
             <TextInput
               value={password}
               onChangeText={setPassword}
-              placeholder="••••••••"
+              placeholder={mode === 'register' ? 'Min. 8 characters' : '••••••••'}
               placeholderTextColor={Colors.muted}
               secureTextEntry
+              maxLength={72}
               autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
               className="bg-card border border-border rounded-xl px-4 py-3.5"
               style={{ color: Colors.cream }}

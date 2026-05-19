@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
-from sqlalchemy import Boolean, Column, String, Integer, Float, DateTime, Text, JSON, text
+from sqlalchemy import Boolean, Column, String, Integer, Float, DateTime, Text, JSON, text, ForeignKey
 from datetime import datetime, timezone
 import os
 
@@ -50,6 +50,21 @@ class User(Base):
     picture_url     = Column(String, nullable=True)
     is_premium      = Column(Boolean, default=False, nullable=False)
     created_at      = Column(DateTime, default=datetime.utcnow)
+
+
+class BookHistory(Base):
+    __tablename__ = "book_history"
+
+    id               = Column(Integer, primary_key=True, autoincrement=True)
+    user_id          = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title            = Column(String, nullable=False)
+    author           = Column(String, nullable=True)
+    year             = Column(String, nullable=True)
+    cover_image_url  = Column(String, nullable=True)
+    goodreads_rating = Column(Float, nullable=True)
+    google_rating    = Column(Float, nullable=True)
+    genres           = Column(JSON, nullable=True)
+    looked_up_at     = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class UsageRecord(Base):

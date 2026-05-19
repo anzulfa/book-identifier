@@ -73,6 +73,10 @@ async def get_or_create_google_user(session: AsyncSession, google_id: str, email
 
 
 async def create_email_user(session: AsyncSession, email: str, password: str, name: str | None = None) -> User:
+    if len(password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters.")
+    if len(password.encode()) > 72:
+        raise HTTPException(status_code=422, detail="Password must be 72 characters or fewer.")
     result = await session.execute(select(User).where(User.email == email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="An account with this email already exists.")

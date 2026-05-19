@@ -8,6 +8,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { useRouter } from 'expo-router';
 import { useBookLookup } from '@/hooks/useBookLookup';
 import { RateLimitError } from '@/lib/api';
+import { addToHistory } from '@/lib/history';
 import { Colors } from '@/constants/Colors';
 
 export default function HomeScreen() {
@@ -19,6 +20,15 @@ export default function HomeScreen() {
     setLoading(true);
     try {
       const result = await mutateAsync(`data:image/jpeg;base64,${base64}`);
+      addToHistory({
+        title: result.title,
+        author: result.author,
+        year: result.year,
+        cover_image_url: result.cover_image_url,
+        goodreads_rating: result.goodreads_rating,
+        google_rating: result.google_rating,
+        genres: result.genres,
+      }).catch(() => {});
       router.push({ pathname: '/result', params: { data: JSON.stringify(result) } });
     } catch (err: any) {
       if (err instanceof RateLimitError) {
